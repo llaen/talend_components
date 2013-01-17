@@ -1,0 +1,98 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		java.util.List 
+    	java.util.Map		
+	" 
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+%>
+
+<%
+String connName = null;
+if (node.getIncomingConnections().size()==1) {
+	IConnection conn = node.getIncomingConnections().get(0);
+	connName = conn.getName();
+
+	String ColumnSource = ElementParameterParser.getValue(node, "__ADDRESS_COLUMN__");
+	String client = ElementParameterParser.getValue(node, "__CLIENT__");
+	String sig = ElementParameterParser.getValue(node, "__SIGNATURE__");
+	List<IMetadataTable> metadatas = node.getMetadataList();
+	IMetadataTable metadata = metadatas.get(0);
+	List<IMetadataColumn> columnsout = metadata.getListColumns();
+
+	List< ? extends IConnection> connsout = node.getOutgoingConnections(); 
+	if (connsout != null) {
+		for (int i = 0; i < connsout.size(); i++) {
+			IConnection connout = connsout.get(i);
+			if(connout.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+				for (int j = 0; j < columnsout.size(); j++) {
+					IMetadataColumn columnout=columnsout.get(j);
+					if (!columnout.getLabel().equals("lat") && !columnout.getLabel().equals("lon")) {
+%>
+						<%=connout.getName() %>.<%=columnout.getLabel() %>=<%=connName %>.<%=columnout.getLabel() %>;
+<%
+					}
+				}
+%>
+				String url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
+				url_<%=cid%> += "?address="+java.net.URLEncoder.encode(<%=connName %>.<%=ColumnSource %>, "UTF-8");
+				url_<%=cid%> += "&sensor=false";
+				if (<%=client %> != null && <%=client %> != "" &&
+					<%=sig %> != null && <%=sig %> != "") {
+					url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
+					url_<%=cid%> += "&signature=" + <%=ElementParameterParser.getValue(node, "__SIGNATURE__")%>;
+				}
+				
+				java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
+				
+				com.fasterxml.jackson.core.JsonFactory f_<%=cid%> = new com.fasterxml.jackson.core.JsonFactory();
+				com.fasterxml.jackson.core.JsonParser jp_<%=cid%> = f_<%=cid%>.createJsonParser(is_<%=cid%>);
+				Double lat_<%=cid%> = 0.;
+				Double lon_<%=cid%> = 0.;
+				String status_<%=cid%> = "";
+				
+				jp_<%=cid%>.nextToken();
+				while (jp_<%=cid%>.hasCurrentToken()) {
+					if (jp_<%=cid%>.getCurrentName() != null && jp_<%=cid%>.getCurrentName().equals("location")) {
+						while (jp_<%=cid%>.nextToken() != com.fasterxml.jackson.core.JsonToken.END_OBJECT) {
+							if (jp_<%=cid%>.getCurrentName().equals("lat")) {
+								jp_<%=cid%>.nextToken();
+								lat_<%=cid%> = jp_<%=cid%>.getValueAsDouble();
+							}
+							if (jp_<%=cid%>.getCurrentName().equals("lng")) {
+								jp_<%=cid%>.nextToken();
+								lon_<%=cid%> = jp_<%=cid%>.getValueAsDouble();
+							}
+						}
+					}
+					if (jp_<%=cid%>.getCurrentName() != null && jp_<%=cid%>.getCurrentName().equals("status")) {
+						jp_<%=cid%>.nextToken();
+						status_<%=cid%> = jp_<%=cid%>.getValueAsString();
+					}
+					jp_<%=cid%>.nextToken();
+				}
+				jp_<%=cid%>.close();
+				
+				if (status_<%=cid%>.equals("OK")) {
+					<%=connout.getName() %>.lat = lat_<%=cid%>;
+					<%=connout.getName() %>.lon = lon_<%=cid%>;
+				}
+
+<%
+			}
+		}
+	}
+}
+%>
