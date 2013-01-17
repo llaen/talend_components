@@ -60,7 +60,7 @@ if (node.getIncomingConnections().size()==1) {
 				t0_<%=cid%> = java.lang.System.currentTimeMillis();
 				do {
 					t1_<%=cid%> = java.lang.System.currentTimeMillis();
-				} while ((t1_<%=cid%> - t0_<%=cid%>) < 1000);
+				} while ((t1_<%=cid%> - t0_<%=cid%>) < 1500);
 				
 				java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
 				
