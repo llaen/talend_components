@@ -46,6 +46,7 @@ if (node.getIncomingConnections().size()==1) {
 					}
 				}
 %>
+				
 				String url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
 				url_<%=cid%> += "?address="+java.net.URLEncoder.encode(<%=connName %>.<%=ColumnSource %>, "UTF-8");
 				url_<%=cid%> += "&sensor=false";
@@ -54,6 +55,12 @@ if (node.getIncomingConnections().size()==1) {
 					url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
 					url_<%=cid%> += "&signature=" + <%=ElementParameterParser.getValue(node, "__SIGNATURE__")%>;
 				}
+				// wait one second to appease google
+				long t0_<%=cid%>, t1_<%=cid%>;
+				t0_<%=cid%> = java.lang.System.currentTimeMillis();
+				do {
+					t1_<%=cid%> = java.lang.System.currentTimeMillis();
+				} while ((t1_<%=cid%> - t0_<%=cid%>) < 1000);
 				
 				java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
 				
