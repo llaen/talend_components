@@ -55,12 +55,12 @@ if (node.getIncomingConnections().size()==1) {
 					url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
 					url_<%=cid%> += "&signature=" + <%=ElementParameterParser.getValue(node, "__SIGNATURE__")%>;
 				}
-				// wait 2 seconds to appease google
+				// wait X seconds to appease google
 				long t0_<%=cid%>, t1_<%=cid%>;
 				t0_<%=cid%> = java.lang.System.currentTimeMillis();
 				do {
 					t1_<%=cid%> = java.lang.System.currentTimeMillis();
-				} while ((t1_<%=cid%> - t0_<%=cid%>) < 2000);
+				} while ((t1_<%=cid%> - t0_<%=cid%>) < (java.lang.Integer.valueOf(<%=ElementParameterParser.getValue(node, "__DELAY__")%>) * 1000));
 				
 				java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
 				
