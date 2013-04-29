@@ -28,6 +28,7 @@ if (node.getIncomingConnections().size()==1) {
 	String ColumnSource = ElementParameterParser.getValue(node, "__ADDRESS_COLUMN__");
 	String client = ElementParameterParser.getValue(node, "__CLIENT__");
 	String sig = ElementParameterParser.getValue(node, "__SIGNATURE__");
+	String skip = ElementParameterParser.getValue(node, "__SKIP__");
 	List<IMetadataTable> metadatas = node.getMetadataList();
 	IMetadataTable metadata = metadatas.get(0);
 	List<IMetadataColumn> columnsout = metadata.getListColumns();
@@ -46,58 +47,62 @@ if (node.getIncomingConnections().size()==1) {
 					}
 				}
 %>
-				
-				String url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
-				url_<%=cid%> += "?address="+java.net.URLEncoder.encode(<%=connName %>.<%=ColumnSource %>, "UTF-8");
-				url_<%=cid%> += "&sensor=false";
-				if (<%=client %> != null && <%=client %> != "" &&
-					<%=sig %> != null && <%=sig %> != "") {
-					url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
-					url_<%=cid%> += "&signature=" + <%=ElementParameterParser.getValue(node, "__SIGNATURE__")%>;
-				}
-				// wait X seconds to appease google
-				long t0_<%=cid%>, t1_<%=cid%>;
-				t0_<%=cid%> = java.lang.System.currentTimeMillis();
-				do {
-					t1_<%=cid%> = java.lang.System.currentTimeMillis();
-				} while ((t1_<%=cid%> - t0_<%=cid%>) < (java.lang.Integer.valueOf(<%=ElementParameterParser.getValue(node, "__DELAY__")%>) * 1000));
-				
-				java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
-				
-				com.fasterxml.jackson.core.JsonFactory f_<%=cid%> = new com.fasterxml.jackson.core.JsonFactory();
-				com.fasterxml.jackson.core.JsonParser jp_<%=cid%> = f_<%=cid%>.createJsonParser(is_<%=cid%>);
-				Double lat_<%=cid%> = 0.;
-				Double lon_<%=cid%> = 0.;
-				String status_<%=cid%> = "";
-				
-				jp_<%=cid%>.nextToken();
-				while (jp_<%=cid%>.hasCurrentToken()) {
-					if (jp_<%=cid%>.getCurrentName() != null && jp_<%=cid%>.getCurrentName().equals("location")) {
-						while (jp_<%=cid%>.nextToken() != com.fasterxml.jackson.core.JsonToken.END_OBJECT) {
-							if (jp_<%=cid%>.getCurrentName().equals("lat")) {
-								jp_<%=cid%>.nextToken();
-								lat_<%=cid%> = jp_<%=cid%>.getValueAsDouble();
-							}
-							if (jp_<%=cid%>.getCurrentName().equals("lng")) {
-								jp_<%=cid%>.nextToken();
-								lon_<%=cid%> = jp_<%=cid%>.getValueAsDouble();
-							}
-						}
-					}
-					if (jp_<%=cid%>.getCurrentName() != null && jp_<%=cid%>.getCurrentName().equals("status")) {
-						jp_<%=cid%>.nextToken();
-						status_<%=cid%> = jp_<%=cid%>.getValueAsString();
-					}
-					jp_<%=cid%>.nextToken();
-				}
-				jp_<%=cid%>.close();
-				
-				if (status_<%=cid%>.equals("OK")) {
-					<%=connout.getName() %>.lat = lat_<%=cid%>;
-					<%=connout.getName() %>.lon = lon_<%=cid%>;
-				} else {
+				if ("true".equals(skip)) {
 					<%=connout.getName() %>.lat = null;
 					<%=connout.getName() %>.lon = null;
+				} else {
+					String url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
+					url_<%=cid%> += "?address="+java.net.URLEncoder.encode(<%=connName %>.<%=ColumnSource %>, "UTF-8");
+					url_<%=cid%> += "&sensor=false";
+					if (<%=client %> != null && <%=client %> != "" &&
+						<%=sig %> != null && <%=sig %> != "") {
+						url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
+						url_<%=cid%> += "&signature=" + <%=ElementParameterParser.getValue(node, "__SIGNATURE__")%>;
+					}
+					// wait X seconds to appease google
+					long t0_<%=cid%>, t1_<%=cid%>;
+					t0_<%=cid%> = java.lang.System.currentTimeMillis();
+					do {
+						t1_<%=cid%> = java.lang.System.currentTimeMillis();
+					} while ((t1_<%=cid%> - t0_<%=cid%>) < (java.lang.Integer.valueOf(<%=ElementParameterParser.getValue(node, "__DELAY__")%>) * 1000));
+					
+					java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
+					
+					com.fasterxml.jackson.core.JsonFactory f_<%=cid%> = new com.fasterxml.jackson.core.JsonFactory();
+					com.fasterxml.jackson.core.JsonParser jp_<%=cid%> = f_<%=cid%>.createJsonParser(is_<%=cid%>);
+					Double lat_<%=cid%> = 0.;
+					Double lon_<%=cid%> = 0.;
+					String status_<%=cid%> = "";
+					
+					jp_<%=cid%>.nextToken();
+					while (jp_<%=cid%>.hasCurrentToken()) {
+						if (jp_<%=cid%>.getCurrentName() != null && jp_<%=cid%>.getCurrentName().equals("location")) {
+							while (jp_<%=cid%>.nextToken() != com.fasterxml.jackson.core.JsonToken.END_OBJECT) {
+								if (jp_<%=cid%>.getCurrentName().equals("lat")) {
+									jp_<%=cid%>.nextToken();
+									lat_<%=cid%> = jp_<%=cid%>.getValueAsDouble();
+								}
+								if (jp_<%=cid%>.getCurrentName().equals("lng")) {
+									jp_<%=cid%>.nextToken();
+									lon_<%=cid%> = jp_<%=cid%>.getValueAsDouble();
+								}
+							}
+						}
+						if (jp_<%=cid%>.getCurrentName() != null && jp_<%=cid%>.getCurrentName().equals("status")) {
+							jp_<%=cid%>.nextToken();
+							status_<%=cid%> = jp_<%=cid%>.getValueAsString();
+						}
+						jp_<%=cid%>.nextToken();
+					}
+					jp_<%=cid%>.close();
+					
+					if (status_<%=cid%>.equals("OK")) {
+						<%=connout.getName() %>.lat = lat_<%=cid%>;
+						<%=connout.getName() %>.lon = lon_<%=cid%>;
+					} else {
+						<%=connout.getName() %>.lat = null;
+						<%=connout.getName() %>.lon = null;
+					}
 				}
 
 <%
