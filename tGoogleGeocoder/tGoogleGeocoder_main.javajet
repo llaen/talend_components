@@ -47,7 +47,7 @@ if (node.getIncomingConnections().size()==1) {
 					}
 				}
 %>
-				if ("true".equals(skip)) {
+				if ("true".equals(<%=skip %>)) {
 					<%=connout.getName() %>.lat = null;
 					<%=connout.getName() %>.lon = null;
 				} else {
