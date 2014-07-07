@@ -10,7 +10,18 @@
 		org.talend.core.model.metadata.types.JavaTypesManager
 		org.talend.core.model.metadata.types.JavaType
 		java.util.List 
-    	java.util.Map		
+    	java.util.Map	
+        java.net.URI 
+		java.net.URISyntaxException 
+		java.io.IOException 
+		java.io.UnsupportedEncodingException 
+		java.security.InvalidKeyException 
+		java.security.NoSuchAlgorithmException 
+		javax.crypto.Mac 
+		javax.crypto.spec.SecretKeySpec 
+		java.net.URL 
+		java.io.BufferedReader 
+		java.io.InputStreamReader 
 	" 
 %>
 <% 
@@ -27,7 +38,8 @@ if (node.getIncomingConnections().size()==1) {
 
 	String ColumnSource = ElementParameterParser.getValue(node, "__ADDRESS_COLUMN__");
 	String client = ElementParameterParser.getValue(node, "__CLIENT__");
-	String sig = ElementParameterParser.getValue(node, "__SIGNATURE__");
+	//String sig = ElementParameterParser.getValue(node, "__SIGNATURE__");
+	String keyString = ElementParameterParser.getValue(node, "__PRIVATE_KEY__");
 	String skip = ElementParameterParser.getValue(node, "__SKIP__");
 	List<IMetadataTable> metadatas = node.getMetadataList();
 	IMetadataTable metadata = metadatas.get(0);
@@ -54,17 +66,63 @@ if (node.getIncomingConnections().size()==1) {
 					String url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
 					url_<%=cid%> += "?address="+java.net.URLEncoder.encode(<%=connName %>.<%=ColumnSource %>, "UTF-8");
 					url_<%=cid%> += "&sensor=false";
+										
 					if (<%=client %> != null && <%=client %> != "" &&
-						<%=sig %> != null && <%=sig %> != "") {
+						<%=keyString %> != null && <%=keyString %> != "") {
+					   
+                        // add the client-id to the URL
 						url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
-						url_<%=cid%> += "&signature=" + <%=ElementParameterParser.getValue(node, "__SIGNATURE__")%>;
+						//System.out.println("DEBUG: URL to sign: " + url_<%=cid%>);
+                        java.net.URL urlToSign_<%=cid%> = new java.net.URL(url_<%=cid%>);
+						
+					    // generate signature for each API call URL
+					    
+						// convert private key to binary
+
+						byte[] key_<%=cid%>;
+					    String keyString_<%=cid%> = <%=keyString%>;
+					    keyString_<%=cid%> = keyString_<%=cid%>.replace('-', '+');
+					    keyString_<%=cid%> = keyString_<%=cid%>.replace('_', '/');
+                        //System.out.println("DEBUG Key: <" + keyString_<%=cid%> + ">");
+                        key_<%=cid%> = net.iharder.Base64.decode(keyString_<%=cid%>);
+					    //System.out.println("DEBUG: Decoced Key: " + key_<%=cid%>);					
+                        
+						String urlPath_<%=cid%> = urlToSign_<%=cid%>.getPath();
+						String urlQuery_<%=cid%> = urlToSign_<%=cid%>.getQuery();
+						String resource_<%=cid%> = urlPath_<%=cid%> + '?' + urlQuery_<%=cid%>; 
+						 
+						// get an HMAC-SHA1 signing key from the raw key bytes
+                        javax.crypto.spec.SecretKeySpec sha1Key_<%=cid%> = new javax.crypto.spec.SecretKeySpec(key_<%=cid%>, "HmacSHA1"); 
+						
+						// get an HMAC-SHA1 Mac instance and initialize it with the HMAC-SHA1 key
+                        javax.crypto.Mac mac_<%=cid%> = javax.crypto.Mac.getInstance("HmacSHA1");
+                        mac_<%=cid%>.init(sha1Key_<%=cid%>);
+
+						// compute the binary signature for the request
+                        byte[] sigBytes_<%=cid%> = mac_<%=cid%>.doFinal(resource_<%=cid%>.getBytes());
+
+						// base 64 encode the binary signature
+                        String signature_<%=cid%> = net.iharder.Base64.encodeBytes(sigBytes_<%=cid%>);
+    
+                        // convert the signature to 'web safe' base 64
+                        signature_<%=cid%> = signature_<%=cid%>.replace('+', '-');
+                        signature_<%=cid%> = signature_<%=cid%>.replace('/', '_');
+    
+	                    //System.out.println("DEBUG: Signature: " + signature_<%=cid%>); 
+	                    
+	                    // add signature to URL
+					    url_<%=cid%> =  urlToSign_<%=cid%>.getProtocol() + "://" + urlToSign_<%=cid%>.getHost() + resource_<%=cid%> + "&signature=" + signature_<%=cid%>;		
+                        
+                        //System.out.println("DEBUG: FULL URL: " + url_<%=cid%>); 						
+		
 					}
-					// wait X seconds to appease google
+					
+					// wait X milliseconds to appease google
 					long t0_<%=cid%>, t1_<%=cid%>;
 					t0_<%=cid%> = java.lang.System.currentTimeMillis();
 					do {
 						t1_<%=cid%> = java.lang.System.currentTimeMillis();
-					} while ((t1_<%=cid%> - t0_<%=cid%>) < (java.lang.Integer.valueOf(<%=ElementParameterParser.getValue(node, "__DELAY__")%>) * 1000));
+					} while ((t1_<%=cid%> - t0_<%=cid%>) < (java.lang.Integer.valueOf(<%=ElementParameterParser.getValue(node, "__DELAY__")%>)));
 					
 					try {
 						java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
