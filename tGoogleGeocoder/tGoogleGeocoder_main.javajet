@@ -38,13 +38,21 @@ if (node.getIncomingConnections().size()==1) {
 
 	String ColumnSource = ElementParameterParser.getValue(node, "__ADDRESS_COLUMN__");
 	String client = ElementParameterParser.getValue(node, "__CLIENT__");
-	//String sig = ElementParameterParser.getValue(node, "__SIGNATURE__");
 	String keyString = ElementParameterParser.getValue(node, "__PRIVATE_KEY__");
 	String skip = ElementParameterParser.getValue(node, "__SKIP__");
+	String debug = ElementParameterParser.getValue(node, "__DEBUG__");
+	String use_https = ElementParameterParser.getValue(node, "__USE_HTTPS__");
+    String use_proxy = ElementParameterParser.getValue(node, "__USE_PROXY__");
+	String http_proxy_host = ElementParameterParser.getValue(node, "__HTTP_PROXY_HOST__");
+	String http_proxy_port = ElementParameterParser.getValue(node, "__HTTP_PROXY_PORT__");
+	String https_proxy_host = ElementParameterParser.getValue(node, "__HTTPS_PROXY_HOST__");
+	String https_proxy_port = ElementParameterParser.getValue(node, "__HTTPS_PROXY_PORT__");	
+	
 	List<IMetadataTable> metadatas = node.getMetadataList();
 	IMetadataTable metadata = metadatas.get(0);
 	List<IMetadataColumn> columnsout = metadata.getListColumns();
-
+					
+	
 	List< ? extends IConnection> connsout = node.getOutgoingConnections(); 
 	if (connsout != null) {
 		for (int i = 0; i < connsout.size(); i++) {
@@ -59,11 +67,67 @@ if (node.getIncomingConnections().size()==1) {
 					}
 				}
 %>
-				if ("true".equals(<%=skip %>)) {
+                Boolean bSkip_<%=cid%> = new Boolean(<%=skip %>);
+				
+				if (bSkip_<%=cid%>) {
 					<%=connout.getName() %>.lat = null;
 					<%=connout.getName() %>.lon = null;
 				} else {
-					String url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
+
+                    Boolean bDebug_<%=cid%> = new Boolean(<%= debug %>);  
+				
+					if (bDebug_<%=cid%>) { 
+  					   System.out.println("-----------------------------------------------");
+			
+					}
+							
+					// Set proxy servers
+					Boolean bUseProxy_<%=cid%> = new Boolean(<%= use_proxy %>); 
+					
+					if (bUseProxy_<%=cid%>) {
+					    						
+					    System.setProperty("http.proxyHost", <%= http_proxy_host %>); 
+                        System.setProperty("http.proxyPort", <%= http_proxy_port %>);  
+                        System.setProperty("https.proxyHost", <%= https_proxy_host %>); 
+                        System.setProperty("https.proxyPort", <%= https_proxy_port %>);
+						
+						if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: HTTP/HTTPs proxies will be used");
+							System.out.println("DEBUG: HTTP proxy: " + <%= http_proxy_host %> + ":" + <%= http_proxy_port %>);
+							System.out.println("DEBUG: HTTPS proxy: " + <%= https_proxy_host %> + ":" + <%= https_proxy_port %>);
+						}
+						
+					}
+					else {
+						if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: No proxies will be used");
+						}
+					}
+					
+					// Use HTTPS to access Google API?
+					String url_<%=cid%> = "";
+					
+					Boolean bUseHttps_<%=cid%> = new Boolean(<%= use_https %>);  
+					
+					if (bUseHttps_<%=cid%>) {
+					    if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: HTTPS will be used to access Google Maps API");
+						}					  
+
+					    url_<%=cid%> = "https://maps.googleapis.com/maps/api/geocode/json";
+					}
+					else {
+					    if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: HTTP will be used to access Google Maps API");
+						}
+					
+					    url_<%=cid%> = "http://maps.googleapis.com/maps/api/geocode/json";
+					}
+					
+					if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: Address to geocode: " + <%=connName %>.<%=ColumnSource %>);
+					}					
+					
 					url_<%=cid%> += "?address="+java.net.URLEncoder.encode(<%=connName %>.<%=ColumnSource %>, "UTF-8");
 					url_<%=cid%> += "&sensor=false";
 										
@@ -72,7 +136,11 @@ if (node.getIncomingConnections().size()==1) {
 					   
                         // add the client-id to the URL
 						url_<%=cid%> += "&client=" + <%=ElementParameterParser.getValue(node, "__CLIENT__")%>;
-						//System.out.println("DEBUG: URL to sign: " + url_<%=cid%>);
+						
+						if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: URL to sign: " + url_<%=cid%>);
+						}
+
                         java.net.URL urlToSign_<%=cid%> = new java.net.URL(url_<%=cid%>);
 						
 					    // generate signature for each API call URL
@@ -108,13 +176,17 @@ if (node.getIncomingConnections().size()==1) {
                         signature_<%=cid%> = signature_<%=cid%>.replace('+', '-');
                         signature_<%=cid%> = signature_<%=cid%>.replace('/', '_');
     
-	                    //System.out.println("DEBUG: Signature: " + signature_<%=cid%>); 
+	                    if (bDebug_<%=cid%>) {
+						    System.out.println("DEBUG: Generated Signature: " + signature_<%=cid%>);
+						}
 	                    
 	                    // add signature to URL
 					    url_<%=cid%> =  urlToSign_<%=cid%>.getProtocol() + "://" + urlToSign_<%=cid%>.getHost() + resource_<%=cid%> + "&signature=" + signature_<%=cid%>;		
-                        
-                        //System.out.println("DEBUG: FULL URL: " + url_<%=cid%>); 						
-		
+                                                						
+					}
+					
+					if (bDebug_<%=cid%>) {
+					   System.out.println("DEBUG: Full API request: " + url_<%=cid%>); 
 					}
 					
 					// wait X milliseconds to appease google
@@ -125,10 +197,12 @@ if (node.getIncomingConnections().size()==1) {
 					} while ((t1_<%=cid%> - t0_<%=cid%>) < (java.lang.Integer.valueOf(<%=ElementParameterParser.getValue(node, "__DELAY__")%>)));
 					
 					try {
-						java.io.InputStream is_<%=cid%> = new java.net.URL (url_<%=cid%>).openStream();
+						java.io.InputStream is_<%=cid%> = new java.net.URL(url_<%=cid%>).openStream();
 						
 						com.fasterxml.jackson.core.JsonFactory f_<%=cid%> = new com.fasterxml.jackson.core.JsonFactory();
+						
 						com.fasterxml.jackson.core.JsonParser jp_<%=cid%> = f_<%=cid%>.createJsonParser(is_<%=cid%>);
+						
 						Double lat_<%=cid%> = 0.;
 						Double lon_<%=cid%> = 0.;
 						String status_<%=cid%> = "";
@@ -158,12 +232,25 @@ if (node.getIncomingConnections().size()==1) {
 						if (status_<%=cid%>.equals("OK")) {
 							<%=connout.getName() %>.lat = lat_<%=cid%>;
 							<%=connout.getName() %>.lon = lon_<%=cid%>;
+							
+							if (bDebug_<%=cid%>) {
+						        System.out.println("DEBUG: Google Maps API successfully returned the result:");
+								System.out.println("DEBUG: Lat: " + lat_<%=cid%>);
+								System.out.println("DEBUG: Lon: " + lon_<%=cid%>);
+						    }
+							
 						} else {
 							<%=connout.getName() %>.lat = null;
 							<%=connout.getName() %>.lon = null;
+							
+						    System.out.println("ERROR: Google Maps API could not return the result for: " + url_<%=cid%>);
+							System.out.println("INFO: Usually this happens if too many queries are sent to the Google Maps API within a small period of time");	
+							System.out.println("INFO: Reconfigure the delay in milliseconds between the queries and run again - e.g. 50 ms");
+                            							
 						}
 					} catch (java.io.IOException e) {
-						System.out.println(e.getMessage());
+						System.out.println("Got an exception: " + e.getMessage());
+						
 						<%=connout.getName() %>.lat = null;
 						<%=connout.getName() %>.lon = null;
 					}
